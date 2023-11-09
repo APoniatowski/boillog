@@ -69,10 +69,11 @@ func LogIt(logFunction string, logOutput string, message string) {
 
 // Logger This function is called by Logit and prints/writes logs
 func logger(logFunction string, logOutput string, message string, w io.Writer) error {
+	timeNow := time.Now()
 	handler := slog.NewTextHandler(w, nil)
 	logger := slog.New(handler)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, slog.TimeKey, time.Now())
+	ctx = context.WithValue(ctx, slog.TimeKey, timeNow)
 	ctx = context.WithValue(ctx, FuncKey, logFunction)
 	switch logOutput {
 	case "INFO":
