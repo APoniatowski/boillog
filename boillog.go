@@ -1,12 +1,16 @@
 package boillog
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"golang.org/x/exp/slog"
 )
 
 // ///////////////////////////== Environment Variables ==////////////////////////////
@@ -40,41 +44,47 @@ func envAppName() string {
 
 ///////////////////////////////== Logging functions ==//////////////////////////////
 
-// LogIt Boilerplate funtion that calls Logger, to write/prints logs
+// Define a custom type to avoid collisions
+type contextKey string
+
+// Define constants for the key used
+const (
+	FuncKey contextKey = "func"
+)
+
+// LogIt Boilerplate funtion that calls Logger, to write logs, and prints it if it fails to write it
 func LogIt(logFunction string, logOutput string, message string) {
-	errCloseLogger := Logger(logFunction, logOutput, message)
+	logPath := filepath.Join(envLogLocation(), envAppName())
+	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println("Error opening log file:", err)
+		return
+	}
+	defer file.Close()
+	errCloseLogger := logger(logFunction, logOutput, message, file)
 	if errCloseLogger != nil {
 		log.Println(errCloseLogger)
 	}
 }
 
 // Logger This function is called by Logit and prints/writes logs
-func Logger(logFunction string, logOutput string, message string) error {
-	currentDate := time.Now().Format("2006-01-02 15:04:05")
-	pathString := envLogLocation()
-	logName := envAppName()
-	path, _ := filepath.Abs(pathString)
-	err := os.MkdirAll(path, os.ModePerm)
-	if err == nil || os.IsExist(err) {
-		logFile, err := os.OpenFile(pathString+logName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			errClose := logFile.Close()
-			if errClose != nil {
-				log.Println(errClose)
-			}
-		}()
-		logger := log.New(logFile, "", log.LstdFlags)
-		logger.SetPrefix(currentDate)
-		logger.Print(logFunction + " [ " + logOutput + " ] ==> " + message)
-	} else {
-		return err
+func logger(logFunction string, logOutput string, message string, w io.Writer) error {
+	handler := slog.NewTextHandler(w, nil)
+	logger := slog.New(handler)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, slog.TimeKey, time.Now())
+	ctx = context.WithValue(ctx, FuncKey, logFunction)
+	switch logOutput {
+	case "INFO":
+		logger.InfoContext(ctx, message)
+	case "WARNING":
+		logger.WarnContext(ctx, message)
+	case "ERROR":
+		logger.ErrorContext(ctx, message)
+	default:
+		logger.InfoContext(ctx, message)
 	}
-	if logOutput != "INFO" {
-		fmt.Println("\t" + logFunction + " [ " + logOutput + " ] ==> " + message)
-	}
+
 	return nil
 }
 
