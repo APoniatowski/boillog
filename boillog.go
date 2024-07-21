@@ -65,29 +65,24 @@ const (
 // LogIt Boilerplate funtion that calls Logger, to write logs, and prints it if it fails to write it
 func LogIt(logFunction string, logOutput string, message string) {
 	logPath := filepath.Join(envLogLocation(), envAppName())
-	_, err := os.Stat(logPath)
-	if os.IsNotExist(err) {
-		// File doesn't exist, create it
-		file, err := os.Create(logPath)
-		if err != nil {
-			log.Println("Error creating log file:", err)
-			return
-		}
-		file.Close()
+	dir := filepath.Dir(logPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("Error creating log directory: %v", err)
+		return
 	}
-	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Println("Error opening log file:", err)
+		log.Printf("Error opening or creating log file: %v", err)
 		return
 	}
 	defer file.Close()
 	errCloseLogger := logger(logFunction, logOutput, message, file)
 	if errCloseLogger != nil {
-		log.Println(errCloseLogger)
+		log.Printf("Error writing to log: %v", errCloseLogger)
 	}
 }
 
-// Logger This function is called by Logit and prints/writes logs
+// Logger This function is called by LogIt and prints/writes logs
 func logger(logFunction string, logOutput string, message string, w io.Writer) error {
 	timeNow := time.Now()
 	handler := slog.NewTextHandler(w, nil)
@@ -95,6 +90,7 @@ func logger(logFunction string, logOutput string, message string, w io.Writer) e
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, slog.TimeKey, timeNow)
 	ctx = context.WithValue(ctx, FuncKey, logFunction)
+
 	switch logOutput {
 	case "INFO":
 		logger.InfoContext(ctx, message)
