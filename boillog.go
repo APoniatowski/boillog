@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/exp/slog"
@@ -76,7 +77,7 @@ func LogIt(logFunction string, logOutput string, message string) {
 		return
 	}
 	defer file.Close()
-	errCloseLogger := logger(logFunction, logOutput, message, file)
+	errCloseLogger := logger(logFunction, strings.ToUpper(logOutput), message, file)
 	if errCloseLogger != nil {
 		log.Printf("Error writing to log: %v", errCloseLogger)
 	}
