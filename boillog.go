@@ -64,7 +64,7 @@ const (
 )
 
 // LogIt Boilerplate funtion that calls Logger, to write logs, and prints it if it fails to write it
-func LogIt(logFunction string, logOutput string, message string) {
+func LogIt(logFunction string, logType string, message string) {
 	logPath := filepath.Join(envLogLocation(), envAppName())
 	dir := filepath.Dir(logPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -77,14 +77,14 @@ func LogIt(logFunction string, logOutput string, message string) {
 		return
 	}
 	defer file.Close()
-	errCloseLogger := logger(logFunction, strings.ToUpper(logOutput), message, file)
+	errCloseLogger := logger(logFunction, strings.ToUpper(logType), message, file)
 	if errCloseLogger != nil {
 		log.Printf("Error writing to log: %v", errCloseLogger)
 	}
 }
 
 // Logger This function is called by LogIt and prints/writes logs
-func logger(logFunction string, logOutput string, message string, w io.Writer) error {
+func logger(logFunction string, logType string, message string, w io.Writer) error {
 	timeNow := time.Now()
 	handler := slog.NewTextHandler(w, nil)
 	logger := slog.New(handler)
@@ -92,7 +92,7 @@ func logger(logFunction string, logOutput string, message string, w io.Writer) e
 	ctx = context.WithValue(ctx, slog.TimeKey, timeNow)
 	ctx = context.WithValue(ctx, FuncKey, logFunction)
 
-	switch logOutput {
+	switch logType {
 	case "INFO":
 		logger.InfoContext(ctx, message)
 	case "WARNING":
